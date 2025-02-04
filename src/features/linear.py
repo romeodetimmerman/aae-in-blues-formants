@@ -6,20 +6,13 @@ this script classifies PRICE vowels as monophtongs or diphthongs
 based on linear regression slopes for f1 and f2 measurements
 """
 
-####################
-# define threshold #
-####################
 
-THRESHOLD_F1 = -0.5
-THRESHOLD_F2 = 0.5
-
-
-#################
-# linear slopes #
-#################
-
-
-def get_slopes_for_vowel(token):
+def compute_slopes(
+    token,
+    f1_column,
+    f2_column,
+    time_column="time_ms",
+):
     """
     fit linear regression models to f1 and f2 measurements and return their respective slopes
 
@@ -27,29 +20,32 @@ def get_slopes_for_vowel(token):
     ------
     token: pandas grouped dataframe
            measurements for a particular token
+    f1_column: str
+               column containing f1 measurements
+    f2_column: str
+               column containing f2 measurements
+    time_column: str
+               column containing time measurements (in milliseconds)
 
     returns
     -------
     slope_f1, slope_f2: pandas series
-                        slopes for f1 and f2 for the given token
+                        slopes for f1 and f2 for the given token (unit = Hz/ms)
     """
     # sort by time (likely redundant, but just to be sure)
-    token = token.sort_values("time")
+    token = token.sort_values(time_column)
 
-    # convert time to ms
-    token["time_ms"] = token["time"] * 1000
-
-    # X is "time" as a 2D array for sklearn
-    X = token[["time_ms"]].values
+    # X is time_column as a 2D array for sklearn
+    X = token[[time_column]].values
 
     # fit f1 slope
-    y_f1 = token["f1p"].values
+    y_f1 = token[f1_column].values
     model_f1 = LinearRegression()
     model_f1.fit(X, y_f1)
     slope_f1 = model_f1.coef_[0]
 
     # fit f2 slope
-    y_f2 = token["f2p"].values
+    y_f2 = token[f2_column].values
     model_f2 = LinearRegression()
     model_f2.fit(X, y_f2)
     slope_f2 = model_f2.coef_[0]
@@ -57,7 +53,7 @@ def get_slopes_for_vowel(token):
     return pd.Series({"slope_f1": slope_f1, "slope_f2": slope_f2})
 
 
-def classify_tokens(row, threshold_f1=THRESHOLD_F1, threshold_f2=THRESHOLD_F2):
+def classify_tokens(row, threshold_f1, threshold_f2):
     """
     classify tokens based on f1 and f2 slopes
 
@@ -79,31 +75,3 @@ def classify_tokens(row, threshold_f1=THRESHOLD_F1, threshold_f2=THRESHOLD_F2):
         return "diphthong"
     else:
         return "monophthong"
-
-
-##############
-# run script #
-##############
-
-
-def main():
-    # read data
-    df = pd.read_csv("../../data/raw/EN_03.csv")
-    df = df[df["vowel"] == "ai"]
-
-    # group by each vowel token and calculate slopes
-    df = df.groupby(["token"], as_index=False).apply(
-        get_slopes_for_vowel, include_groups=False
-    )
-
-    # classify vowels based on slopes
-    df["classification"] = df.apply(classify_tokens, axis=1)
-
-    # print results
-    print(df)
-    print()
-    print(df["classification"].value_counts())
-
-
-if __name__ == "__main__":
-    main()
