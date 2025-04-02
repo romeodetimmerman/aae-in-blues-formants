@@ -213,7 +213,7 @@ def preprocess_files(
         unique_ids.append(unique_id)
 
     # add it as a new column to df
-    df["ID"] = unique_ids
+    df["vowel_id"] = unique_ids
 
     # save the updated csv in the specified output folder
     df.to_csv(output_csv_path, index=False)
