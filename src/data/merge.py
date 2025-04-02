@@ -69,6 +69,9 @@ def merge_formants_with_perceptive_coding():
     ]
     formants_df = formants_df[columns_to_keep]
 
+    # rename time column
+    formants_df = formants_df.rename(columns={"time": "measurment_index"})
+
     # read the perceptive coding csv
     perceptive_df = pd.read_csv(interim_dir / "perceptive-coding.csv")
 
