@@ -73,7 +73,7 @@ def isolate_vocals(input_folder, output_folder):
 
 def main():
     input_folder = "../../data/raw/lyrics"
-    output_folder = "../../data/interim/vocals"
+    output_folder = "../../data/raw/vocals"
     isolate_vocals(input_folder, output_folder)
 
 
