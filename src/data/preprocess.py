@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import glob
 import shutil
+import json
 
 
 def extract_artist_and_song(filepath):
@@ -35,6 +36,7 @@ def preprocess_files(
     input_transcriptions_folder="../../data/raw/transcriptions",
     output_vocals_folder="../../data/interim/vocals",
     output_transcriptions_folder="../../data/interim/transcriptions",
+    artist_song_key_path="../../data/raw/artist_song_key.json",
     pdf_pattern="*.pdf",
     wav_pattern="*.wav",
     input_csv_path="../../data/raw/perceptive-coding.csv",
@@ -55,6 +57,8 @@ def preprocess_files(
         path to save processed vocal audio files
     output_transcriptions_folder: str
         path to save processed transcription pdfs
+    artist_song_key_path: str
+        path to the json file containing artist and song id mappings
     pdf_pattern: str
         glob pattern for pdf files
     wav_pattern: str
@@ -82,6 +86,18 @@ def preprocess_files(
         )
         return
 
+    # check if key file exists
+    if not os.path.exists(artist_song_key_path):
+        print(f"error: artist song key file not found at {artist_song_key_path}")
+        return
+
+    # load the artist/song key
+    with open(artist_song_key_path, "r") as f:
+        id_name_key = json.load(f)
+
+    # create an inverted map: (artist_name, song_name) -> "artist_id-song_id"
+    name_to_id_map = {(v["artist"], v["song"]): k for k, v in id_name_key.items()}
+
     # create output folders if they don't exist
     os.makedirs(output_vocals_folder, exist_ok=True)
     os.makedirs(output_transcriptions_folder, exist_ok=True)
@@ -103,117 +119,98 @@ def preprocess_files(
         )
         return
 
-    ######################################################
-    # build dictionaries to map artist -> artist_id, (artist, song) -> song_id #
-    ######################################################
-    artist_id_map = {}
-    song_id_map_per_artist = {}
-
-    # keep a list of unique (artist, song) tuples while parsing files
-    artist_song_pairs = []
-
-    for f in all_files:
-        artist, song = extract_artist_and_song(f)
-        if artist and song:
-            artist_song_pairs.append((artist, song))
-
-    # get unique pairs
-    artist_song_pairs = list(set(artist_song_pairs))
-
-    # assign a unique 3-digit ID to each artist
-    # for each artist, assign a unique 3-digit ID to each of their songs
-    current_artist_id = 1
-    for artist, song in artist_song_pairs:
-        # create an ID for the artist if not already assigned
-        if artist not in artist_id_map:
-            artist_id_map[artist] = f"{current_artist_id:03d}"
-            song_id_map_per_artist[artist] = {}
-            current_artist_id += 1
-
-    # assign song IDs per artist, assuming each artist has exactly 3 songs
-    for artist, song in artist_song_pairs:
-        # if not assigned a song ID yet, assign the next 3-digit
-        if song not in song_id_map_per_artist[artist]:
-            # the number of songs already assigned to this artist
-            current_song_count = len(song_id_map_per_artist[artist])
-            song_id_map_per_artist[artist][song] = f"{(current_song_count + 1):03d}"
-
-    #######################################
+    #####################################
     # copy the files to <artist_id>-<song_id>.<ext> #
-    #######################################
+    #####################################
+    processed_files_count = 0
+    skipped_files_count = 0
     for f in all_files:
         artist, song = extract_artist_and_song(f)
         if artist and song:
-            artist_id = artist_id_map[artist]
-            song_id = song_id_map_per_artist[artist][song]
-            _, ext = os.path.splitext(f)
-            new_name = f"{artist_id}-{song_id}{ext}"
+            # look up the combined id from the loaded key
+            lookup_key = (artist, song)
+            if lookup_key in name_to_id_map:
+                artist_song_id = name_to_id_map[lookup_key]  # e.g., "001-001"
+                _, ext = os.path.splitext(f)
+                new_name = f"{artist_song_id}{ext}"
 
-            # determine output folder based on file extension
-            if ext.lower() == ".pdf":
-                new_path = os.path.join(output_transcriptions_folder, new_name)
-            else:  # wav files
-                new_path = os.path.join(output_vocals_folder, new_name)
+                # determine output folder based on file extension
+                if ext.lower() == ".pdf":
+                    new_path = os.path.join(output_transcriptions_folder, new_name)
+                else:  # wav files
+                    new_path = os.path.join(output_vocals_folder, new_name)
 
-            # copy file instead of moving it
-            shutil.copy2(f, new_path)
-            print(f"copied: {os.path.basename(f)} -> {new_name}")
+                # copy file instead of moving it
+                shutil.copy2(f, new_path)
+                # print(f"copied: {os.path.basename(f)} -> {new_name}") # optionally keep for verbose output
+                processed_files_count += 1
+            else:
+                print(
+                    f"warning: skipping file (artist/song not found in key): {os.path.basename(f)}"
+                )
+                skipped_files_count += 1
         else:
-            print(f"skipping file (no matching pattern): {os.path.basename(f)}")
+            print(
+                f"warning: skipping file (could not extract artist/song): {os.path.basename(f)}"
+            )
+            skipped_files_count += 1
+
+    print(
+        f"finished processing files. copied: {processed_files_count}, skipped: {skipped_files_count}"
+    )
 
     ##################################
     # process the csv to add the new 3-part ID #
     ##################################
 
+    # check if input csv exists
+    if not os.path.exists(input_csv_path):
+        print(f"error: input csv file not found at {input_csv_path}")
+        return
+
     # use the full path for the csv file
     df = pd.read_csv(input_csv_path)
 
-    # keep counters for each (artist, song) combination to build the third group (token)
-    # key: (artist, song), value: integer count
-    token_counters = {}
+    # keep counters for each (artist, song) combination to build the third group (measurement index)
+    # key: "artist_id-song_id", value: integer count
+    measurement_counters = {}
 
-    # initialize counters to 0 for all known (artist, song) combos discovered from the files
-    # handle combos not seen in csv file separately
-    for artist, song in artist_song_pairs:
-        token_counters[(artist, song)] = 0
+    # initialize counters based on keys found in the json map
+    for artist_song_id in id_name_key.keys():
+        measurement_counters[artist_song_id] = 0
 
     # store final ID
-    unique_ids = []
+    vowel_ids = []
 
     for _, row in df.iterrows():
         artist_val = row[csv_artist_column]
         song_val = row[csv_song_column]
 
-        # ensure there is an ID for this artist
-        if artist_val in artist_id_map:
-            artist_id = artist_id_map[artist_val]
+        # look up the "artist_id-song_id" string using the inverted map
+        lookup_key = (artist_val, song_val)
+        if lookup_key in name_to_id_map:
+            artist_song_id = name_to_id_map[lookup_key]  # e.g., "001-001"
+
+            # increment measurement counter for this specific "artist_id-song_id"
+            measurement_counters.setdefault(
+                artist_song_id, 0
+            )  # ensure key exists if somehow missed initially
+            measurement_counters[artist_song_id] += 1
+            measurement_index = f"{measurement_counters[artist_song_id]:03d}"
+
+            # build the final ID string
+            vowel_id = f"{artist_song_id}-{measurement_index}"
+            vowel_ids.append(vowel_id)
+
         else:
-            # handle missing or unknown artist
-            artist_id = "000"
-
-        # ensure there is an ID for this song under the given artist
-        if (
-            artist_val in song_id_map_per_artist
-            and song_val in song_id_map_per_artist[artist_val]
-        ):
-            song_id = song_id_map_per_artist[artist_val][song_val]
-        else:
-            # handle missing or unknown song
-            song_id = "000"
-
-        # increment token counter for this specific (artist, song)
-        token_counters.setdefault(
-            (artist_val, song_val), 0
-        )  # if not present, default 0
-        token_counters[(artist_val, song_val)] += 1
-        token_id = f"{token_counters[(artist_val, song_val)]:03d}"
-
-        # build the final ID string
-        unique_id = f"{artist_id}-{song_id}-{token_id}"
-        unique_ids.append(unique_id)
+            # handle case where artist/song from csv is not in the key
+            print(
+                f"warning: artist '{artist_val}', song '{song_val}' not found in key. assigning default id."
+            )
+            vowel_ids.append("000-000-000")  # or handle as appropriate
 
     # add it as a new column to df
-    df["vowel_id"] = unique_ids
+    df["vowel_id"] = vowel_ids
 
     # save the updated csv in the specified output folder
     df.to_csv(output_csv_path, index=False)
@@ -221,4 +218,26 @@ def preprocess_files(
 
 
 if __name__ == "__main__":
-    preprocess_files()
+    # assuming the script is run from the project root or paths are adjusted accordingly
+    # determine project root based on script location (src/data/preprocess.py)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(os.path.dirname(script_dir))
+
+    # construct absolute paths relative to the project root
+    input_vocals = os.path.join(project_root, "data/raw/vocals")
+    input_transcriptions = os.path.join(project_root, "data/raw/transcriptions")
+    output_vocals = os.path.join(project_root, "data/interim/vocals")
+    output_transcriptions = os.path.join(project_root, "data/interim/transcriptions")
+    key_path = os.path.join(project_root, "data/raw/artist_song_key.json")
+    input_csv = os.path.join(project_root, "data/raw/perceptive_coding.csv")
+    output_csv = os.path.join(project_root, "data/interim/perceptive_coding.csv")
+
+    preprocess_files(
+        input_vocals_folder=input_vocals,
+        input_transcriptions_folder=input_transcriptions,
+        output_vocals_folder=output_vocals,
+        output_transcriptions_folder=output_transcriptions,
+        artist_song_key_path=key_path,
+        input_csv_path=input_csv,
+        output_csv_path=output_csv,
+    )
