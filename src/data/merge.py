@@ -69,11 +69,11 @@ def merge_formants_with_perceptive_coding():
     ]
     formants_df = formants_df[columns_to_keep]
 
-    # rename time column
-    formants_df = formants_df.rename(columns={"time": "measurement_index"})
+    # avoid confusion with categorical time column
+    formants_df = formants_df.rename(columns={"time": "measurement_time"})
 
     # read the perceptive coding csv
-    perceptive_df = pd.read_csv(interim_dir / "perceptive-coding.csv")
+    perceptive_df = pd.read_csv(interim_dir / "perceptive_coding.csv")
 
     # print length of each dataframe
     print(f"formants_df length: {len(formants_df)}")
@@ -103,6 +103,14 @@ def merge_formants_with_perceptive_coding():
     print(f"\nmerged_df length: {len(merged_df)}")
     print(f"matched rows: {len(merged_df) - len(unmatched)}")
     print(f"unmatched rows: {len(unmatched)}")
+
+    # drop rows where f1 or f2 is NaN
+    print(f"\nmerged_df length before dropping na rows: {len(merged_df)}")
+    merged_df = merged_df.dropna(subset=["f1", "f2"])
+    print(f"\nmerged_df length after dropping na rows: {len(merged_df)}")
+
+    # drop the vowel column from the merged dataframe
+    merged_df = merged_df.drop(columns=["vowel"])
 
     # save the merged dataframe
     output_path = interim_dir / "merged_formants_perceptive.csv"
