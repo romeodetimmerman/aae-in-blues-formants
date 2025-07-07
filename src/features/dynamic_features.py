@@ -35,8 +35,14 @@ def compute_euclidean_distance_and_deltas(token, t20, t80):
         row["euclid_dist"] = np.sqrt((f1p_80 - f1p_20) ** 2 + (f2p_80 - f2p_20) ** 2)
 
         # compute relative deltas
-        row["f1_delta"] = (f1p_80 - f1p_20) / f1p_20 if f1p_20 != 0 else np.nan
-        row["f2_delta"] = (f2p_80 - f2p_20) / f2p_20 if f2p_20 != 0 else np.nan
+        epsilon = 1e-3
+
+        row["f1_delta"] = (f1p_80 - f1p_20) / (
+            (abs(f1p_80) + abs(f1p_20)) / 2 + epsilon
+        )
+        row["f2_delta"] = (f2p_80 - f2p_20) / (
+            (abs(f2p_80) + abs(f2p_20)) / 2 + epsilon
+        )
 
     except Exception:
         row["euclid_dist"] = row["f1_delta"] = row["f2_delta"] = np.nan
