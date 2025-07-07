@@ -74,7 +74,7 @@ def preprocess_files(
 
     returns
     -------
-    none
+    none: saves the updated csv file
     """
     # check if input folders exist
     if not os.path.exists(input_vocals_folder):
@@ -102,9 +102,7 @@ def preprocess_files(
     os.makedirs(output_vocals_folder, exist_ok=True)
     os.makedirs(output_transcriptions_folder, exist_ok=True)
 
-    #####################
-    # gather pdf and wav files #
-    #####################
+    # gather pdf and wav files
     pdf_files = glob.glob(os.path.join(input_transcriptions_folder, pdf_pattern))
     wav_files = glob.glob(os.path.join(input_vocals_folder, wav_pattern))
     all_files = pdf_files + wav_files
@@ -115,13 +113,11 @@ def preprocess_files(
 
     if not all_files:
         print(
-            "no files found to process. please check your input folders and file patterns."
+            "no files found to process, please check your input folders and file patterns."
         )
         return
 
-    #####################################
-    # copy the files to <artist_id>-<song_id>.<ext> #
-    #####################################
+    # copy the files to <artist_id>-<song_id>.<ext>
     processed_files_count = 0
     skipped_files_count = 0
     for f in all_files:
@@ -142,7 +138,7 @@ def preprocess_files(
 
                 # copy file instead of moving it
                 shutil.copy2(f, new_path)
-                # print(f"copied: {os.path.basename(f)} -> {new_name}") # optionally keep for verbose output
+
                 processed_files_count += 1
             else:
                 print(
@@ -156,12 +152,10 @@ def preprocess_files(
             skipped_files_count += 1
 
     print(
-        f"finished processing files. copied: {processed_files_count}, skipped: {skipped_files_count}"
+        f"finished processing files, copied: {processed_files_count}, skipped: {skipped_files_count}"
     )
 
-    ##################################
-    # process the csv to add the new 3-part ID #
-    ##################################
+    # process the csv to add the new 3-part ID
 
     # check if input csv exists
     if not os.path.exists(input_csv_path):
@@ -179,7 +173,7 @@ def preprocess_files(
     for artist_song_id in id_name_key.keys():
         measurement_counters[artist_song_id] = 0
 
-    # store final ID
+    # store final id
     vowel_ids = []
 
     for _, row in df.iterrows():
@@ -198,7 +192,7 @@ def preprocess_files(
             measurement_counters[artist_song_id] += 1
             measurement_index = f"{measurement_counters[artist_song_id]:03d}"
 
-            # build the final ID string
+            # build the final id string
             vowel_id = f"{artist_song_id}-{measurement_index}"
             vowel_ids.append(vowel_id)
 
@@ -218,12 +212,11 @@ def preprocess_files(
 
 
 if __name__ == "__main__":
-    # assuming the script is run from the project root or paths are adjusted accordingly
-    # determine project root based on script location (src/data/preprocess.py)
+    # determine project root
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(os.path.dirname(script_dir))
 
-    # construct absolute paths relative to the project root
+    # construct absolute paths
     input_vocals = os.path.join(project_root, "data/raw/vocals")
     input_transcriptions = os.path.join(project_root, "data/raw/transcriptions")
     output_vocals = os.path.join(project_root, "data/interim/vocals")

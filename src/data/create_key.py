@@ -16,7 +16,7 @@ def create_id_name_key(input_csv_path: str, output_json_path: str):
 
     returns
     -------
-    None
+    none: saves the key to a json file
     """
     # read the csv file
     df = pd.read_csv(input_csv_path)
@@ -47,7 +47,7 @@ def create_id_name_key(input_csv_path: str, output_json_path: str):
     with open(output_json_path, "w") as f:
         json.dump(id_name_key, f, indent=4)
 
-    print(f"Key saved to {output_json_path}")
+    print(f"key saved to {output_json_path}")
 
 
 if __name__ == "__main__":
@@ -65,6 +65,6 @@ if __name__ == "__main__":
 
     # check if input file exists
     if not os.path.exists(abs_input_csv):
-        print(f"Error: Input file not found at {abs_input_csv}")
+        print(f"input file not found at {abs_input_csv}")
     else:
         create_id_name_key(abs_input_csv, abs_output_json)

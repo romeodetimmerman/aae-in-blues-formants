@@ -6,12 +6,15 @@ def merge_formant_files():
     """
     merge all formant csv files into a single csv file
 
+    params
+    ------
+    none: reads all formant csv files in data/raw/formants/
+
     returns
     -------
-    None
-        saves merged csv to data/interim/merged_formants.csv
+    none: saves merged csv to data/interim/merged_formants.csv
     """
-    # get project root directory (2 levels up from this script)
+    # get project root directory
     root_dir = Path(__file__).parent.parent.parent
 
     # get all csv files from raw formants directory
@@ -31,7 +34,7 @@ def merge_formant_files():
     # concatenate all dataframes
     merged_df = pd.concat(dfs, ignore_index=True)
 
-    # create interim directory if it doesn't exist
+    # create interim directory
     output_dir = root_dir / "data/interim"
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -45,8 +48,16 @@ def merge_formant_files():
 def merge_formants_with_perceptive_coding():
     """
     merge the merged formant csv with the perceptive coding csv
+
+    params
+    ------
+    none: reads the merged formant csv and the perceptive coding csv
+
+    returns
+    -------
+    none: saves merged csv to data/interim/merged_formants_perceptive.csv
     """
-    # get project root directory (2 levels up from this script)
+    # get project root directory
     root_dir = Path(__file__).parent.parent.parent
     interim_dir = root_dir / "data/interim"
 
@@ -88,7 +99,7 @@ def merge_formants_with_perceptive_coding():
         print(
             f"\nwarning: {len(unmatched)} rows in perceptive coding have no matching formant data"
         )
-        print("these rows will have NaN values for formant-related columns")
+        print("\nthese rows will have NaN values for formant-related columns")
         print("\nfirst few unmatched rows:")
         print(unmatched[["vowel_id"]].head())
 
@@ -99,13 +110,13 @@ def merge_formants_with_perceptive_coding():
 
     # print length of merged dataframe
     print(f"\nmerged_df length: {len(merged_df)}")
-    print(f"matched rows: {len(merged_df) - len(unmatched)}")
-    print(f"unmatched rows: {len(unmatched)}")
+    print(f"\nmatched rows: {len(merged_df) - len(unmatched)}")
+    print(f"\nunmatched rows: {len(unmatched)}")
 
     # drop rows where f1 or f2 is NaN
-    print(f"\nmerged_df length before dropping na rows: {len(merged_df)}")
+    print(f"\nmerged_df length before dropping NaN rows: {len(merged_df)}")
     merged_df = merged_df.dropna(subset=["f1", "f2"])
-    print(f"\nmerged_df length after dropping na rows: {len(merged_df)}")
+    print(f"\nmerged_df length after dropping NaN rows: {len(merged_df)}")
 
     # drop the vowel column from the merged dataframe
     merged_df = merged_df.drop(columns=["vowel"])

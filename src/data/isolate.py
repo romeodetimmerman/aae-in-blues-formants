@@ -7,12 +7,16 @@ def isolate_vocals(input_folder, output_folder):
     """
     isolate vocals from mp3 files in the input folder
 
-    args:
-        input_folder (str): path to folder containing mp3 files
-        output_folder (str): path to folder where wav files will be saved
+    params
+    ------
+    input_folder: str
+        path to folder containing mp3 files
+    output_folder: str
+        path to folder where wav files will be saved
 
-    returns:
-        none: saves isolated vocals as wav files in output folder
+    returns
+    -------
+    none: saves isolated vocals as wav files in output folder
     """
     # ensure output folder exists
     os.makedirs(output_folder, exist_ok=True)
@@ -64,11 +68,6 @@ def isolate_vocals(input_folder, output_folder):
         finally:
             # clean up temporary htdemucs folder
             shutil.rmtree(temp_output_folder, ignore_errors=True)
-
-
-##########
-# run script #
-##########
 
 
 def main():
