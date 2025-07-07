@@ -70,7 +70,7 @@ def get_vowel_metadata(token):
     return row
 
 
-def filter_middle_portion(token, middle_percent=0.6):
+def filter_middle_portion(token):
     """
     filter token to middle portion for dynamic analysis
 
@@ -78,8 +78,6 @@ def filter_middle_portion(token, middle_percent=0.6):
     ------
     token: pd.dataframe
         dataframe containing measurements for a single vowel token
-    middle_percent: float
-        percentage of middle portion to keep (default 0.6 for 60%)
 
     returns
     -------

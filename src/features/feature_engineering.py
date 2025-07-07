@@ -1,13 +1,12 @@
 import pandas as pd
-import numpy as np
 
-# import modular functionality
 from data_loader import load_and_prepare_data, get_vowel_metadata, filter_middle_portion
-from dynamic_features import (
-    compute_euclidean_distance_and_deltas,
+from distance_features import compute_euclidean_distance_and_deltas
+from coefficient_features import (
     compute_linear_slopes,
+    compute_quadratic_coefficients,
+    compute_spline_coefficients,
 )
-from curve_fitting import compute_quadratic_coefficients, compute_spline_coefficients
 from derivative_features import compute_derivative_features
 
 

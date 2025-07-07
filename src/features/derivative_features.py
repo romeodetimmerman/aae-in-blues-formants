@@ -2,13 +2,33 @@ import numpy as np
 from scipy.interpolate import UnivariateSpline
 
 
-def compute_derivative_stats(x, y, kind="first"):
+def compute_derivative_stats(x, y, kind):
     """
     fit univariate spline and compute first/second derivative stats
-    returns mean, min, max, std
+
+    params
+    ------
+    x: np.array
+        time values
+    y: np.array
+        formant values
+    kind: str
+        "first" or "second" derivative
+
+    returns
+    -------
+    list
+        list containing mean, min, max, std of the derivative
     """
+    # verify kind
+    if kind not in ["first", "second"]:
+        raise ValueError("kind must be 'first' or 'second'")
+
+    # check if there are enough points
     if len(x) < 5:
         return [np.nan] * 4
+
+    # fit spline and compute derivative
     try:
         spline = UnivariateSpline(x, y, s=0.5)
         deriv = spline.derivative(n=1 if kind == "first" else 2)
@@ -19,14 +39,14 @@ def compute_derivative_stats(x, y, kind="first"):
         return [np.nan] * 4
 
 
-def compute_derivative_features(token):
+def compute_derivative_features(token_middle):
     """
     compute first and second derivative statistics for f1 and f2
 
     params
     ------
-    token: pd.dataframe
-        dataframe containing measurements for a single vowel token
+    token_middle: pd.dataframe
+        dataframe containing middle portion of vowel token
 
     returns
     -------
@@ -36,9 +56,9 @@ def compute_derivative_features(token):
     row = {}
 
     try:
-        x = token["measurement_time"].values
-        y1 = token["f1p"].values
-        y2 = token["f2p"].values
+        x = token_middle["measurement_time"].values
+        y1 = token_middle["f1p"].values
+        y2 = token_middle["f2p"].values
 
         # compute first and second derivative stats
         f1_first = compute_derivative_stats(x, y1, kind="first")
