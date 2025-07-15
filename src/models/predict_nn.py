@@ -39,7 +39,7 @@ def load_model(model_type):
     return model
 
 
-def evaluate_model(y_test, y_pred):
+def evaluate_model(y_test, y_pred, y_pred_prob):
     """
     compute evaluation metrics for predictions
 
@@ -49,6 +49,8 @@ def evaluate_model(y_test, y_pred):
         true labels
     y_pred: array-like
         predicted labels
+    y_pred_prob: array-like
+        predicted probabilities
 
     returns
     -------
@@ -59,7 +61,7 @@ def evaluate_model(y_test, y_pred):
     precision = precision_score(y_test, y_pred)
     recall = recall_score(y_test, y_pred)
     f1 = f1_score(y_test, y_pred)
-    roc_auc = roc_auc_score(y_test, y_pred)
+    roc_auc = roc_auc_score(y_test, y_pred_prob)
     results = {
         "accuracy": accuracy,
         "precision": precision,
@@ -212,7 +214,7 @@ def main():
         plot_roc_curve(model, X_test, y_test, model_type)
 
         # evaluate model
-        results = evaluate_model(y_test, y_pred)
+        results = evaluate_model(y_test, y_pred, y_pred_prob)
         print("\nmodel results:")
         print(results)
 
