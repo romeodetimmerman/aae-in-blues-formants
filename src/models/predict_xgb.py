@@ -120,9 +120,7 @@ def shap_plot(model, X_train, train_vowel_ids):
     shap_values = explainer(X_train)
 
     # beeswarm plot with custom colormap
-    shap.summary_plot(
-        shap_values, X_train, max_display=15, show=False, cmap=custom_cmap
-    )
+    shap.summary_plot(shap_values, X_train, max_display=15, show=False, cmap="Blues")
     plt.savefig("../../figures/shap_summary_beeswarm.png", dpi=600, bbox_inches="tight")
     plt.close()
 
