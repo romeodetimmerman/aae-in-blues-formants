@@ -15,7 +15,6 @@ import shap
 import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib
-from matplotlib.colors import LinearSegmentedColormap
 
 
 def load_model():
@@ -32,7 +31,7 @@ def load_model():
     return model
 
 
-def evaluate_model(y_test, y_pred):
+def evaluate_model(y_test, y_pred, y_pred_prob):
     """
     compute evaluation metrics for predictions
 
@@ -42,6 +41,8 @@ def evaluate_model(y_test, y_pred):
         true labels
     y_pred: array-like
         predicted labels
+    y_pred_prob: array-like
+        predicted probabilities
 
     returns
     -------
@@ -52,7 +53,7 @@ def evaluate_model(y_test, y_pred):
     precision = precision_score(y_test, y_pred)
     recall = recall_score(y_test, y_pred)
     f1 = f1_score(y_test, y_pred)
-    roc_auc = roc_auc_score(y_test, y_pred)
+    roc_auc = roc_auc_score(y_test, y_pred_prob)
     results = {
         "accuracy": accuracy,
         "precision": precision,
@@ -110,23 +111,44 @@ def shap_plot(model, X_train, train_vowel_ids):
 
     # custom colors
     colors = ["#E1812C", "#3373A1"]
-    custom_cmap = LinearSegmentedColormap.from_list("custom_shap", colors)
     custom_neg_color = colors[0]
     custom_pos_color = colors[1]
     default_pos_color = "#ff0051"
     default_neg_color = "#008bfb"
 
-    explainer = shap.Explainer(model, X_train)
-    shap_values = explainer(X_train)
+    # create a copy of X_train with formatted column names for SHAP plotting
+    if hasattr(X_train, "columns"):
+        formatted_columns = [
+            col.replace("_", " ").capitalize() for col in X_train.columns
+        ]
+        X_train_pretty = X_train.copy()
+        X_train_pretty.columns = formatted_columns
+    else:
+        X_train_pretty = X_train
+
+    explainer = shap.Explainer(model, X_train_pretty)
+    shap_values = explainer(X_train_pretty)
 
     # beeswarm plot with custom colormap
-    shap.summary_plot(shap_values, X_train, max_display=15, show=False, cmap="Blues")
+    shap.summary_plot(
+        shap_values,
+        X_train_pretty,
+        max_display=15,
+        show=False,
+        cmap="Blues",
+    )
     plt.savefig("../../figures/shap_summary_beeswarm.png", dpi=600, bbox_inches="tight")
     plt.close()
 
     # bar plot (all bars in custom blue)
     fig, ax = plt.subplots()
-    shap.summary_plot(shap_values, X_train, plot_type="bar", max_display=15, show=False)
+    shap.summary_plot(
+        shap_values,
+        X_train_pretty,
+        plot_type="bar",
+        max_display=15,
+        show=False,
+    )
 
     # set all bars to custom blue
     custom_blue = "#3373A1"
@@ -155,7 +177,11 @@ def shap_plot(model, X_train, train_vowel_ids):
             print("\nvowel_id {} not found in train_vowel_ids".format(vowel_id))
 
     for vowel in idxs_of_interest_in_X_train:
-        shap.plots.waterfall(shap_values[vowel], max_display=15, show=False)
+        shap.plots.waterfall(
+            shap_values[vowel],
+            max_display=15,
+            show=False,
+        )
         # manually update colors for waterfall plot
         for fc in plt.gcf().get_children():
             for fcc in fc.get_children():
@@ -273,7 +299,7 @@ def main():
     plot_roc_curve(model, X_test, y_test)
 
     # evaluate model
-    results = evaluate_model(y_test, y_pred)
+    results = evaluate_model(y_test, y_pred, y_pred_prob)
     print("\nmodel results:")
     print(results)
 
